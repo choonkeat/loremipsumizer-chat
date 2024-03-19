@@ -62,7 +62,7 @@ init : Flags -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         lookupTable =
-            Maybe.withDefault "Alice,WD40" url.fragment
+            Maybe.withDefault "Alice" url.fragment
                 |> String.split ","
                 |> List.foldl
                     (\key acc ->
@@ -76,7 +76,8 @@ init flags url navKey =
             To: bob@spy.com
             Subject: WD40
 
-            FYI the WD40 costs $42.70 only -- Alice
+            You can get NVDA H100 $2,999 if you confirm now
+            -- Alice
             """
                 |> String.Extra.unindent
                 |> String.trim
@@ -116,7 +117,9 @@ view model =
                     , p [ class "my-4" ]
                         [ text "It will automatically obfuscate "
                         , strong [] [ text "numbers" ]
-                        , text " and "
+                        , text ", "
+                        , strong [] [ text "ProductNames" ]
+                        , text ", and "
                         , strong [] [ text "email addresses" ]
                         , text ". But if that is not enough, you can add your own sensitive words below: "
                         ]
@@ -479,6 +482,9 @@ replaceAuto autoList string =
                 Just Pattern.Email ->
                     "user" ++ toNumber match ++ "@example.com"
 
+                Just Pattern.Acronym ->
+                    "ACRONYM" ++ toNumber match
+
                 Just Pattern.Digits ->
                     toNumber match
 
@@ -501,6 +507,13 @@ unreplaceAuto autoList string =
             case Pattern.typeFrom m of
                 Just Pattern.Email ->
                     toNumber (String.filter Char.isDigit match) "00"
+
+                Just Pattern.Acronym ->
+                    if String.left 7 match == "ACRONYM" then
+                        toNumber (String.dropLeft 7 match) "00"
+
+                    else
+                        match
 
                 Just Pattern.Digits ->
                     toNumber match "00"

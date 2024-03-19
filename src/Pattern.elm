@@ -5,6 +5,7 @@ import Regex exposing (Match, Regex)
 
 type Type
     = Email
+    | Acronym
     | Digits
 
 
@@ -29,14 +30,20 @@ fromType t =
         Email ->
             build "[a-zA-Z0-9.!\\#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:.[a-zA-Z0-9-]+)*"
 
+        Acronym ->
+            build "\\b([A-Z][A-Z0-9\\-]{1,}|[A-Z]\\w+[A-Z]+\\w*)\\b"
+
         Digits ->
-            build "\\d+"
+            build "\\d[\\d\\,\\.]+"
 
 
+{-| List of patterns to match. Order is important: from most specific to least
+-}
 autoPatterns : List Pattern
 autoPatterns =
     List.map fromType
         [ Email
+        , Acronym
         , Digits
         ]
 
@@ -73,6 +80,9 @@ typeFrom { match } =
             (\pattern ->
                 case pattern of
                     Pattern Email _ regex ->
+                        Regex.contains regex match
+
+                    Pattern Acronym _ regex ->
                         Regex.contains regex match
 
                     Pattern Digits _ regex ->
