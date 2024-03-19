@@ -3,12 +3,13 @@ module Main exposing (..)
 import Browser
 import Browser.Navigation
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, form, h1, h4, input, label, node, pre, span, text, textarea)
-import Html.Attributes exposing (class, for, href, id, placeholder, rel, title, type_, value)
+import Html exposing (Html, button, div, form, h1, h4, input, label, node, p, pre, span, strong, text, textarea)
+import Html.Attributes exposing (class, for, href, id, rel, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import List.Extra
-import Random
+import Pattern
 import Regex exposing (Regex)
+import String.Extra
 import Task
 import Time
 import Url
@@ -35,7 +36,7 @@ type alias Model =
     { navKey : Browser.Navigation.Key
     , alert : Maybe Alert
     , lookupTable : List ( String, String )
-    , numbersList : List String
+    , autoList : List String
     , inputBefore : String
     , inputAfter : String
     , outputBefore : String
@@ -61,24 +62,35 @@ init : Flags -> Url.Url -> Browser.Navigation.Key -> ( Model, Cmd Msg )
 init flags url navKey =
     let
         lookupTable =
-            Maybe.withDefault "FYI,John,WD40" url.fragment
+            Maybe.withDefault "Alice,WD40" url.fragment
                 |> String.split ","
                 |> List.foldl
                     (\key acc ->
                         acc ++ [ ( key, newWord 1 acc ) ]
                     )
                     []
+
+        sampleInputText =
+            """
+            From: alice@secret.com
+            To: bob@spy.com
+            Subject: WD40
+
+            FYI the WD40 costs $42.70 only -- Alice
+            """
+                |> String.Extra.unindent
+                |> String.trim
     in
     ( { navKey = navKey
       , alert = Nothing
       , lookupTable = lookupTable
-      , numbersList = []
+      , autoList = []
       , inputBefore = ""
       , inputAfter = ""
       , outputBefore = ""
       , outputAfter = ""
       }
-    , Task.perform (always (OnInput "FYI the WD40 costs $42.70 only, John")) (Task.succeed ())
+    , Task.perform (always (OnInput sampleInputText)) (Task.succeed ())
     )
 
 
@@ -97,7 +109,17 @@ view model =
                 [ div [ class "md:p-4" ]
                     [ h1 [ class "text-3xl font-bold mb-5" ] [ text "Loremipsumizer for ChatGPTs" ]
                     , viewMaybe viewAlert model.alert
-                    , h4 [] [ text "Replacer words (numbers are automatically obfuscated)" ]
+                    , p [ class "my-4" ]
+                        [ text "Use ChatGPT without revealing sensitive info. "
+                        , text "This tool will replace sensitive words with loremipsum words, and vice versa. "
+                        ]
+                    , p [ class "my-4" ]
+                        [ text "It will automatically obfuscate "
+                        , strong [] [ text "numbers" ]
+                        , text " and "
+                        , strong [] [ text "email addresses" ]
+                        , text ". But if that is not enough, you can add your own sensitive words below: "
+                        ]
                     , wordsLookupForm model.lookupTable
                     , beforeAfterForm OnInput
                         { colorBefore = "text-pink-500"
@@ -306,20 +328,20 @@ update msg model =
                     string
                         |> replaceWith loremipsumize (Dict.fromList model.lookupTable)
 
-                newNumbersList =
-                    buildDigitsLookup loremString model.numbersList
+                newAutoList =
+                    buildAutoList model.autoList loremString
 
                 newInputAfter =
-                    replaceDigits newNumbersList loremString
+                    replaceAuto newAutoList loremString
             in
             ( { model
                 | inputBefore = string
                 , inputAfter = newInputAfter
-                , numbersList = newNumbersList
+                , autoList = newAutoList
               }
             , Cmd.batch
                 [ Task.perform
-                    -- always perform the OnOutput task because there could be a change to model.numbersList
+                    -- always perform the OnOutput task because there could be a change to model.autoList
                     (always (OnOutput model.outputBefore))
                     (Task.succeed ())
                 , Browser.Navigation.pushUrl model.navKey ("#" ++ String.join "," (List.map Tuple.first model.lookupTable))
@@ -330,7 +352,7 @@ update msg model =
             let
                 newString =
                     string
-                        |> unreplaceDigits model.numbersList
+                        |> unreplaceAuto model.autoList
                         |> replaceWith unloremipsumize (Dict.fromList model.lookupTable)
             in
             ( { model
@@ -433,44 +455,57 @@ matchFullword string =
             matchFullword (Debug.log "Regex.fromString failed: matchFullword:" string)
 
 
-matchFulldigit : a -> Regex
-matchFulldigit a =
-    case Regex.fromString "\\d+" of
-        Just regex ->
-            regex
-
-        Nothing ->
-            -- infinite loop crash, or return Regex.never
-            matchFulldigit (Debug.log "Regex.fromString failed: matchFulldigit:" a)
-
-
-buildDigitsLookup : String -> List String -> List String
-buildDigitsLookup string oldList =
+buildAutoList : List String -> String -> List String
+buildAutoList oldList string =
     let
         newList =
-            Regex.find (matchFulldigit ()) string
+            Regex.find Pattern.combinedRegex string
                 |> List.map .match
     in
     List.Extra.unique (oldList ++ newList)
 
 
-replaceDigits : List String -> String -> String
-replaceDigits numberList string =
-    Regex.replace (matchFulldigit ())
-        (\{ match } ->
-            List.Extra.elemIndex match numberList
+replaceAuto : List String -> String -> String
+replaceAuto autoList string =
+    let
+        toNumber match =
+            List.Extra.elemIndex match autoList
                 |> Maybe.map (\i -> String.fromInt (i + 1))
                 |> Maybe.withDefault "00"
+    in
+    Regex.replace Pattern.combinedRegex
+        (\({ match } as m) ->
+            case Pattern.typeFrom m of
+                Just Pattern.Email ->
+                    "user" ++ toNumber match ++ "@example.com"
+
+                Just Pattern.Digits ->
+                    toNumber match
+
+                Nothing ->
+                    match
         )
         string
 
 
-unreplaceDigits : List String -> String -> String
-unreplaceDigits numberList string =
-    Regex.replace (matchFulldigit ())
-        (\{ match } ->
+unreplaceAuto : List String -> String -> String
+unreplaceAuto autoList string =
+    let
+        toNumber match defaultValue =
             String.toInt match
-                |> Maybe.andThen (\i -> List.Extra.getAt (i - 1) numberList)
-                |> Maybe.withDefault "00"
+                |> Maybe.andThen (\i -> List.Extra.getAt (i - 1) autoList)
+                |> Maybe.withDefault defaultValue
+    in
+    Regex.replace Pattern.combinedRegex
+        (\({ match } as m) ->
+            case Pattern.typeFrom m of
+                Just Pattern.Email ->
+                    toNumber (String.filter Char.isDigit match) "00"
+
+                Just Pattern.Digits ->
+                    toNumber match "00"
+
+                Nothing ->
+                    match
         )
         string
