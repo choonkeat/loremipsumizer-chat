@@ -97,7 +97,7 @@ view model =
                 [ div [ class "md:p-4" ]
                     [ h1 [ class "text-3xl font-bold mb-5" ] [ text "Loremipsumizer for ChatGPTs" ]
                     , viewMaybe viewAlert model.alert
-                    , h4 [] [ text "Replacer words (numbers are automatically obfucscated)" ]
+                    , h4 [] [ text "Replacer words (numbers are automatically obfuscated)" ]
                     , wordsLookupForm model.lookupTable
                     , beforeAfterForm OnInput
                         { colorBefore = "text-pink-500"
