@@ -24,6 +24,8 @@ suite =
     , ( "camelCX", Just Pattern.AcronymOrCamelCase )
     , ( "CamelCX", Just Pattern.AcronymOrCamelCase )
     , ( "CAmelcx", Just Pattern.AcronymOrCamelCase )
+    , ( "Camel99", Just Pattern.AcronymOrCamelCase )
+    , ( "Camel99b", Just Pattern.AcronymOrCamelCase )
 
     --
     , ( "@example.com", Nothing )

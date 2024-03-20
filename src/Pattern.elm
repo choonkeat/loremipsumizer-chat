@@ -49,7 +49,18 @@ fromType t =
             build "\\b([a-z0-9_]+_[a-z0-9_]*|[a-z0-9_]*_[a-z0-9_]+)\\b"
 
         AcronymOrCamelCase ->
-            build "\\b([A-Z][A-Z0-9\\-]+\\w*|\\w*[a-z][A-Z]\\w*)\\b"
+            build
+                (String.join "|"
+                    [ -- CX99b
+                      "\\b([A-Z][A-Z0-9\\-]+\\w*\\b"
+
+                    -- camelCase, TitleCase
+                    , "\\b\\w*[a-z][A-Z]\\w*)\\b"
+
+                    -- Bingo3
+                    , "\\b\\w*[a-zA-Z]\\d+\\w*\\b"
+                    ]
+                )
 
         Digits ->
             build "\\d[\\d\\,\\.]+"
