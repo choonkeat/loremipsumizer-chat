@@ -3,3 +3,6 @@ build:
 
 elm-live:
 	npx elm-live src/Main.elm --  --debug
+
+test:
+	npx elm-test-rs

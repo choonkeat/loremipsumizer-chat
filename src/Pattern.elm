@@ -49,7 +49,7 @@ fromType t =
             build "\\b([a-z0-9_]+_[a-z0-9_]*|[a-z0-9_]*_[a-z0-9_]+)\\b"
 
         AcronymOrCamelCase ->
-            build "\\b([A-Z][A-Z0-9\\-]{1,}|[A-Z]\\w+[A-Z]+\\w*)\\b"
+            build "\\b([A-Z][A-Z0-9\\-]+\\w*|\\w*[a-z][A-Z]\\w*)\\b"
 
         Digits ->
             build "\\d[\\d\\,\\.]+"
@@ -80,7 +80,7 @@ combinedRegex =
 
 {-| Given matched string, find what type of pattern it matches
 -}
-typeFrom : Match -> Maybe Type
+typeFrom : { a | match : String } -> Maybe Type
 typeFrom { match } =
     autoPatterns
         |> List.filter
