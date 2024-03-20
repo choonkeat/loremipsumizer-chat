@@ -76,7 +76,8 @@ init flags url navKey =
             To: bob@spy.com
             Subject: WD40
 
-            You can get NVDA H100 $2,999 if you confirm now
+            You can get NVDA H100 $2,999 if you confirm now.
+            Just give me the invoice_id
             -- Alice
             """
                 |> String.Extra.unindent
@@ -119,6 +120,8 @@ view model =
                         , strong [] [ text "numbers" ]
                         , text ", "
                         , strong [] [ text "ProductNames" ]
+                        , text ", "
+                        , strong [] [ text "field_names" ]
                         , text ", and "
                         , strong [] [ text "email addresses" ]
                         , text ". But if that is not enough, you can add your own sensitive words below: "
@@ -128,14 +131,14 @@ view model =
                         { colorBefore = "text-pink-500"
                         , colorAfter = "text-teal-500"
                         , titleBefore = "Enter your message"
-                        , titleAfter = "Copy+Paste to ChatGPT"
+                        , titleAfter = "Copy+Paste masked message to ChatGPT"
                         , contentBefore = model.inputBefore
                         , contentAfter = model.inputAfter
                         }
                     , beforeAfterForm OnOutput
                         { colorBefore = "text-teal-500"
                         , colorAfter = "text-pink-500"
-                        , titleBefore = "Copy+Paste reply from ChatGPT"
+                        , titleBefore = "Copy+Paste the reply from ChatGPT"
                         , titleAfter = "The real reply"
                         , contentBefore = model.outputBefore
                         , contentAfter = model.outputAfter
@@ -482,8 +485,11 @@ replaceAuto autoList string =
                 Just Pattern.Email ->
                     "user" ++ toNumber match ++ "@example.com"
 
-                Just Pattern.Acronym ->
-                    "ACRONYM" ++ toNumber match
+                Just Pattern.SnakeCase ->
+                    "ipsum_" ++ toNumber match
+
+                Just Pattern.AcronymOrCamelCase ->
+                    "LOREM" ++ toNumber match
 
                 Just Pattern.Digits ->
                     toNumber match
@@ -508,9 +514,16 @@ unreplaceAuto autoList string =
                 Just Pattern.Email ->
                     toNumber (String.filter Char.isDigit match) "00"
 
-                Just Pattern.Acronym ->
-                    if String.left 7 match == "ACRONYM" then
-                        toNumber (String.dropLeft 7 match) "00"
+                Just Pattern.SnakeCase ->
+                    if String.left 6 match == "ipsum_" then
+                        toNumber (String.dropLeft 6 match) "00"
+
+                    else
+                        match
+
+                Just Pattern.AcronymOrCamelCase ->
+                    if String.left 5 match == "LOREM" then
+                        toNumber (String.dropLeft 5 match) "00"
 
                     else
                         match

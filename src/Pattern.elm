@@ -3,10 +3,25 @@ module Pattern exposing (Type(..), combinedRegex, fromType, typeFrom)
 import Regex exposing (Match, Regex)
 
 
+{-| Remember to update autoPatterns
+-}
 type Type
     = Email
-    | Acronym
+    | SnakeCase
+    | AcronymOrCamelCase
     | Digits
+
+
+{-| List of patterns to match. Order is important: from most specific to least
+-}
+autoPatterns : List Pattern
+autoPatterns =
+    List.map fromType
+        [ Email
+        , SnakeCase
+        , AcronymOrCamelCase
+        , Digits
+        ]
 
 
 type Pattern
@@ -30,22 +45,14 @@ fromType t =
         Email ->
             build "[a-zA-Z0-9.!\\#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:.[a-zA-Z0-9-]+)*"
 
-        Acronym ->
+        SnakeCase ->
+            build "\\b([a-z0-9_]+_[a-z0-9_]*|[a-z0-9_]*_[a-z0-9_]+)\\b"
+
+        AcronymOrCamelCase ->
             build "\\b([A-Z][A-Z0-9\\-]{1,}|[A-Z]\\w+[A-Z]+\\w*)\\b"
 
         Digits ->
             build "\\d[\\d\\,\\.]+"
-
-
-{-| List of patterns to match. Order is important: from most specific to least
--}
-autoPatterns : List Pattern
-autoPatterns =
-    List.map fromType
-        [ Email
-        , Acronym
-        , Digits
-        ]
 
 
 {-| One regex to match them all (see typeFrom)
@@ -82,7 +89,10 @@ typeFrom { match } =
                     Pattern Email _ regex ->
                         Regex.contains regex match
 
-                    Pattern Acronym _ regex ->
+                    Pattern SnakeCase _ regex ->
+                        Regex.contains regex match
+
+                    Pattern AcronymOrCamelCase _ regex ->
                         Regex.contains regex match
 
                     Pattern Digits _ regex ->
